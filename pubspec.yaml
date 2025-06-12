@@ -1,5 +1,5 @@
-name: cgn
-description: "A new Flutter project."
+name: cjn
+description: "A 24/7 platform for jobs, employability, corporate branding, and career development"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

@@ -1,10 +1,10 @@
-// lib/screens/video_player_screen.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter/services.dart'; // Import for SystemChrome
-import 'package:cgn/widgets/logos/logo.dart';
-import 'package:cgn/widgets/navigation_drawer.dart';
+import 'package:cjn/widgets/logos/logo.dart';
+import 'package:cjn/widgets/navigation_drawer.dart';
+import 'package:cjn/main.dart'; // Ensure this import is present and correct
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoId;
@@ -12,11 +12,10 @@ class VideoPlayerScreen extends StatefulWidget {
   const VideoPlayerScreen({super.key, required this.videoId});
 
   @override
-  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState(); // CORRECTED: This now correctly refers to _VideoPlayerScreenState
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-// CORRECTED: Ensure the State class name matches what createState() returns
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   late YoutubePlayerController _controller;
   final double _appBarHeight = 60.0;
 
@@ -41,11 +40,45 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         disableDragSeek: false,
         loop: false,
         isLive: false,
-        forceHD: false, // Set to false to prevent automatic full-screen on orientation change
+        forceHD: false,
         enableCaption: true,
       ),
     );
     _controller.addListener(_listener);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Subscribe to the routeObserver when dependencies change
+    // This ensures that the route (ModalRoute.of(context)) is available.
+    // The 'routeObserver' variable is globally defined in main.dart
+    routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+  }
+
+  @override
+  void didPushNext() {
+    // Called when another route has been pushed on top of this route.
+    // Pause the video when navigating away.
+    debugPrint('VideoPlayerScreen: didPushNext - Pausing video');
+    if (_controller.value.isPlaying) {
+      _controller.pause();
+    }
+    // Also ensure system UI is reset to default when another screen is on top
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+  }
+
+  @override
+  void didPopNext() {
+    // Called when the top route has been popped off, and this route is now the active route.
+    // Resume the video when returning to this screen.
+    debugPrint('VideoPlayerScreen: didPopNext - Resuming video');
+    // Only play if the video was previously paused by this route's navigation logic
+    // and if the controller is in a state where it can play (e.g., not ended, not error)
+    if (_controller.value.playerState == PlayerState.paused || _controller.value.playerState == PlayerState.buffering) {
+      _controller.play();
+    }
   }
 
   void _listener() {
@@ -57,11 +90,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         DeviceOrientation.landscapeRight,
       ]);
     } else {
+      // Only set to edgeToEdge and allow all orientations if not pushing a new route
+      // The didPushNext will handle resetting system UI when another route is pushed.
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // Show system bars
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
-        // Allow landscape too, as user might manually rotate without going full screen
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
@@ -71,6 +105,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _controller.removeListener(_listener);
+    // Unsubscribe from routeObserver to prevent memory leaks
+    routeObserver.unsubscribe(this);
     _controller.dispose();
     // Ensure system settings are reverted when leaving the screen
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -81,10 +117,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return YoutubePlayerBuilder(
-      // CORRECTED: Remove the 'controller' parameter directly from YoutubePlayerBuilder.
-      // The controller is passed *inside* the YoutubePlayer widget below.
-      player: YoutubePlayer( // This is the player widget that YoutubePlayerBuilder manages for fullscreen.
-        controller: _controller, // <-- Pass the controller here to the YoutubePlayer widget.
+      player: YoutubePlayer(
+        controller: _controller,
         showVideoProgressIndicator: true,
         progressIndicatorColor: const Color.fromARGB(255, 7, 135, 255),
         progressColors: const ProgressBarColors(
@@ -96,10 +130,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         onEnded: (data) => debugPrint('Video ended: ${data.videoId}'),
       ),
       builder: (context, player) {
-        // 'player' is the actual YoutubePlayer widget managed by YoutubePlayerBuilder.
         return Scaffold(
           backgroundColor: Colors.grey[900],
-          // Hide AppBar and Drawer ONLY when the player is in its full-screen mode
           appBar: _controller.value.isFullScreen
               ? null
               : _buildClassyAppBar(context),
@@ -126,14 +158,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: AspectRatio( // Add AspectRatio to maintain 16:9 in regular view
+                      child: AspectRatio(
                         aspectRatio: 16 / 9,
-                        child: player, // Use the player widget provided by the builder
+                        child: player,
                       ),
                     ),
                   ),
                 ),
-                // Only show ads and other content when not in player's full-screen mode
                 if (!_controller.value.isFullScreen) ...[
                   _buildAdvertisementSection(),
                   const SizedBox(height: 20),
