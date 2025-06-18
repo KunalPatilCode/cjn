@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:flutter/services.dart'; // Import for SystemChrome
-import 'package:cjn/widgets/logos/logo.dart';
-import 'package:cjn/widgets/navigation_drawer.dart';
-import 'package:cjn/main.dart'; // Ensure this import is present and correct
+import 'package:cjn/widgets/logos/logo.dart'; // Make sure this path is correct
+import 'package:cjn/widgets/navigation_drawer.dart'; // Make sure this path is correct
+import 'package:cjn/main.dart'; // Ensure this import is present and correct for routeObserver
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import google_mobile_ads for BannerAd
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoId;
@@ -18,6 +19,14 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   late YoutubePlayerController _controller;
   final double _appBarHeight = 60.0;
+
+  // --- AdMob Banner Ad Variables ---
+  BannerAd? _bannerAd; // Nullable BannerAd instance
+  bool _isBannerAdLoaded = false; // To track if the ad is loaded
+
+  // IMPORTANT: Use Google's TEST Banner Ad Unit ID for development!
+  // Replace this with your REAL ad unit ID ONLY when preparing for production.
+  final String _adUnitId = 'ca-app-pub-3940256099942544/6300978111'; // Google's TEST Banner ID
 
   static const List<Map<String, String>> _qrList = [
     {'image': 'assets/qr1.png', 'label': 'JAVA'},
@@ -45,44 +54,64 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
       ),
     );
     _controller.addListener(_listener);
+
+    // --- Initialize and Load Banner Ad ---
+    _loadBannerAd();
+  }
+
+  void _loadBannerAd() {
+    _bannerAd = BannerAd(
+      adUnitId: _adUnitId,
+      request: const AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (ad) {
+          debugPrint('BannerAd loaded: ${ad.adUnitId}');
+          setState(() {
+            _isBannerAdLoaded = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          debugPrint('BannerAd failed to load: ${ad.adUnitId}, Error: $error');
+          ad.dispose(); // Dispose the ad when it fails to load
+          setState(() {
+            _isBannerAdLoaded = false;
+          });
+        },
+        onAdOpened: (ad) => debugPrint('BannerAd opened.'),
+        onAdClosed: (ad) => debugPrint('BannerAd closed.'),
+        onAdImpression: (ad) => debugPrint('BannerAd impression.'),
+      ),
+    );
+
+    _bannerAd!.load();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Subscribe to the routeObserver when dependencies change
-    // This ensures that the route (ModalRoute.of(context)) is available.
-    // The 'routeObserver' variable is globally defined in main.dart
     routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
   }
 
   @override
   void didPushNext() {
-    // Called when another route has been pushed on top of this route.
-    // Pause the video when navigating away.
     debugPrint('VideoPlayerScreen: didPushNext - Pausing video');
     if (_controller.value.isPlaying) {
       _controller.pause();
     }
-    // Also ensure system UI is reset to default when another screen is on top
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
   }
 
   @override
   void didPopNext() {
-    // Called when the top route has been popped off, and this route is now the active route.
-    // Resume the video when returning to this screen.
     debugPrint('VideoPlayerScreen: didPopNext - Resuming video');
-    // Only play if the video was previously paused by this route's navigation logic
-    // and if the controller is in a state where it can play (e.g., not ended, not error)
     if (_controller.value.playerState == PlayerState.paused || _controller.value.playerState == PlayerState.buffering) {
       _controller.play();
     }
   }
 
   void _listener() {
-    // This listener handles system UI and orientation changes based on the player's internal full-screen state.
     if (_controller.value.isFullScreen) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       SystemChrome.setPreferredOrientations([
@@ -90,9 +119,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
         DeviceOrientation.landscapeRight,
       ]);
     } else {
-      // Only set to edgeToEdge and allow all orientations if not pushing a new route
-      // The didPushNext will handle resetting system UI when another route is pushed.
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // Show system bars
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
@@ -105,12 +132,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   @override
   void dispose() {
     _controller.removeListener(_listener);
-    // Unsubscribe from routeObserver to prevent memory leaks
     routeObserver.unsubscribe(this);
     _controller.dispose();
-    // Ensure system settings are reverted when leaving the screen
+    _bannerAd?.dispose(); // Dispose the banner ad when the screen is disposed
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-    SystemChrome.setPreferredOrientations(DeviceOrientation.values); // Reset to all
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
   }
 
@@ -166,7 +192,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                   ),
                 ),
                 if (!_controller.value.isFullScreen) ...[
-                  _buildAdvertisementSection(),
+                  // Conditionally show the ad section only if banner is loaded
+                  if (_isBannerAdLoaded && _bannerAd != null)
+                    _buildAdvertisementSection(), // Now this will contain the actual ad
+                  // If ad is not loaded, you might show a different placeholder or nothing
+                  if (!_isBannerAdLoaded)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Container(
+                        height: AdSize.banner.height.toDouble(), // Use standard ad height
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[800],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey, width: 1),
+                        ),
+                        child: const Text(
+                          'Ad Loading...',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 20),
                   const Padding(
                     padding: EdgeInsets.only(top: 20.0, left: 24, right: 24),
@@ -258,7 +304,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     );
   }
 
-  // --- Helper methods remain unchanged ---
+  // --- Helper methods ---
   PreferredSizeWidget _buildClassyAppBar(BuildContext context) {
     return AppBar(
       toolbarHeight: _appBarHeight,
@@ -352,115 +398,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     );
   }
 
+  // --- MODIFIED: This method now correctly integrates the AdWidget ---
   Widget _buildAdvertisementSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[800],
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.blueAccent, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.4),
-              blurRadius: 10,
-              spreadRadius: 2,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: InkWell(
-          onTap: () {
-            debugPrint('Advertisement section tapped!');
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.campaign, color: Colors.amber, size: 24),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ADVERTISEMENT',
-                      style: TextStyle(
-                        color: Colors.amber[300],
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const Spacer(),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    'assets/banner.png',
-                    height: 100,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: 100,
-                        alignment: Alignment.center,
-                        color: Colors.red[300],
-                        child: const Text(
-                          'Failed to load ad image',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Exclusive offer: OPPO RenoZ Purple..!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'New Launch first come first serve Click to know more!',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      debugPrint('Learn More button clicked!');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    ),
-                    child: const Text(
-                      'Learn More',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    // Only return the AdWidget if the banner ad is loaded
+    if (_isBannerAdLoaded && _bannerAd != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Container(
+          // Ensure the Container has the correct size for the ad
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          decoration: BoxDecoration(
+            color: Colors.grey[800], // Background color of the ad container
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blueAccent, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.4),
+                blurRadius: 10,
+                spreadRadius: 2,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ClipRRect( // Clip to apply borderRadius to the ad
+            borderRadius: BorderRadius.circular(10),
+            child: AdWidget(ad: _bannerAd!), // This is the crucial line!
           ),
         ),
-      ),
-    );
+      );
+    } else {
+      // This part will ideally not be reached if _isBannerAdLoaded is false,
+      // as the `if (_isBannerAdLoaded)` check in the build method handles it.
+      // But including it for completeness, or as a fallback for custom non-ad content.
+      return const SizedBox.shrink(); // Return an empty widget if ad is not loaded
+    }
   }
 }

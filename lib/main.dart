@@ -1,18 +1,15 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Required for SystemUiOverlayStyle
+import 'package:cjn/screens/video_player_screen.dart'; // Ensure this path is correct
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import for Mobile Ads initialization
 
-// Import your screens
-import 'package:cjn/screens/splash_screen.dart';
-import 'package:cjn/screens/video_player_screen.dart';
-import 'package:cjn/screens/about.dart';
-
-/// IMPORTANT: This `routeObserver` MUST be a top-level (global) variable.
-/// It cannot be inside a class for `VideoPlayerScreen` to access it directly.
+// Global RouteObserver for observing route changes
+// This allows widgets (like VideoPlayerScreen) to react to navigation events.
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized(); // Required for Flutter framework initialization
+  // Initialize Google Mobile Ads SDK
+  MobileAds.instance.initialize(); // This initializes the SDK with the App ID from AndroidManifest.xml
   runApp(const MyApp());
 }
 
@@ -22,52 +19,102 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Continuous Job Network',
+      debugShowCheckedModeBanner: false, // Set to false for production
+      title: 'CJN Video App',
       theme: ThemeData(
+        brightness: Brightness.dark, // Overall dark theme
         primarySwatch: Colors.blue,
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(235, 4, 193, 251),
-          brightness: Brightness.light,
-        ).copyWith(
-          secondary: const Color.fromARGB(235, 4, 193, 251),
-        ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black,
-          iconTheme: IconThemeData(color: Colors.black),
-          titleTextStyle: TextStyle(
-            color: Color.fromARGB(235, 4, 193, 251),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-          systemOverlayStyle: SystemUiOverlayStyle(
-            statusBarIconBrightness: Brightness.dark,
-            statusBarBrightness: Brightness.light,
-          ),
+          backgroundColor: Colors.black, // Dark app bar
+          foregroundColor: Colors.white, // White icons/text on app bar
+          elevation: 0,
+        ),
+        scaffoldBackgroundColor: Colors.grey[900], // Dark background for screens
+        colorScheme: ColorScheme.dark(
+          primary: Colors.blueAccent, // Primary color for your app
+          secondary: Colors.cyanAccent, // Secondary color
+          surface: Colors.grey[850]!, // Card/dialog background
+          background: Colors.grey[900]!, // Main background
+          onPrimary: Colors.white,
+          onSecondary: Colors.black,
+          onSurface: Colors.white,
+          onBackground: Colors.white,
+          error: Colors.redAccent,
+          onError: Colors.white,
         ),
         textTheme: const TextTheme(
-          titleLarge: TextStyle(
-            color: Color.fromARGB(235, 4, 193, 251),
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+          bodyLarge: TextStyle(color: Colors.white),
+          bodyMedium: TextStyle(color: Colors.white70),
+          headlineSmall: TextStyle(color: Colors.white),
+          headlineMedium: TextStyle(color: Colors.white),
+          headlineLarge: TextStyle(color: Colors.white),
+          titleLarge: TextStyle(color: Colors.white),
+          titleMedium: TextStyle(color: Colors.white),
+          titleSmall: TextStyle(color: Colors.white),
+        ).apply(
+          bodyColor: Colors.white, // Default text color
+          displayColor: Colors.white, // Default display text color
+        ),
+        buttonTheme: const ButtonThemeData(
+          buttonColor: Colors.blueAccent,
+          textTheme: ButtonTextTheme.primary,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blueAccent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
         ),
-        scaffoldBackgroundColor: Colors.grey[900],
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.blueAccent,
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: Colors.grey[850],
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        listTileTheme: const ListTileThemeData(
+          iconColor: Colors.white70,
+          textColor: Colors.white,
+        ),
+        bottomSheetTheme: BottomSheetThemeData(
+          backgroundColor: Colors.grey[850],
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+        ),
+        // Add any other specific theme properties you need
       ),
-      // Register the routeObserver with the MaterialApp's Navigator
-      navigatorObservers: [routeObserver],
-      routes: {
-        '/': (context) => const SplashScreen(),
-        // MODIFIED: The /home route now points to VideoPlayerScreen.
-        // It provides a default videoId for simplicity when navigating from the drawer.
-        '/home': (context) => const VideoPlayerScreen(videoId: 'glxULceEEjA'),
-        '/videoPlayer': (context) {
-          final String? videoId = ModalRoute.of(context)?.settings.arguments as String?;
-          return VideoPlayerScreen(videoId: videoId ?? 'glxULceEEjA');
-        },
-        '/about': (context) => const AboutScreen(),
+      navigatorObservers: [routeObserver], // Register the route observer here
+      // Directly open VideoPlayerScreen as the home screen
+      // Use a default video ID. You can change 'dQw4w9WgXcQ' to any other YouTube video ID.
+      home: const VideoPlayerScreen(videoId: 'LMPvtCrOvZY'),
+      
+      // onGenerateRoute is kept if you intend to navigate to VideoPlayerScreen from other places
+      // and pass arguments via Navigator.pushNamed('/videoPlayer', arguments: 'some_video_id').
+      // If you ONLY ever open to VideoPlayerScreen and never navigate to it again with arguments,
+      // you could potentially remove this block and the 'routes' map.
+      onGenerateRoute: (settings) {
+        if (settings.name == '/videoPlayer') {
+          final args = settings.arguments as String?;
+          return MaterialPageRoute(
+            builder: (context) {
+              return VideoPlayerScreen(
+                videoId: args ?? 'LMPvtCrOvZY', // Fallback to default if no ID passed
+              );
+            },
+          );
+        }
+        // If an unknown route is pushed, you can return null or a default error page.
+        return null;
       },
     );
   }
