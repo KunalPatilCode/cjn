@@ -1,3 +1,4 @@
+import 'package:cjn/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:cjn/screens/video_player_screen.dart'; // Ensure this path is correct
 import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import for Mobile Ads initialization
@@ -74,13 +75,13 @@ class MyApp extends StatelessWidget {
             foregroundColor: Colors.blueAccent,
           ),
         ),
-        cardTheme: CardTheme(
-          color: Colors.grey[850],
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
+        // cardTheme: CardTheme(
+        //   color: Colors.grey[850],
+        //   elevation: 4,
+        //   shape: RoundedRectangleBorder(
+        //     borderRadius: BorderRadius.circular(12),
+        //   ),
+        // ),
         listTileTheme: const ListTileThemeData(
           iconColor: Colors.white70,
           textColor: Colors.white,
@@ -97,6 +98,9 @@ class MyApp extends StatelessWidget {
       // Directly open VideoPlayerScreen as the home screen
       // Use a default video ID. You can change 'dQw4w9WgXcQ' to any other YouTube video ID.
       home: const VideoPlayerScreen(videoId: 'LMPvtCrOvZY'),
+      routes: {
+        '/login': (context) => const LoginScreen(),
+      },
       
       // onGenerateRoute is kept if you intend to navigate to VideoPlayerScreen from other places
       // and pass arguments via Navigator.pushNamed('/videoPlayer', arguments: 'some_video_id').

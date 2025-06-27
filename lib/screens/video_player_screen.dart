@@ -66,14 +66,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
       size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint('BannerAd loaded: ${ad.adUnitId}');
+          debugPrint('BannerAd loaded: \\${ad.adUnitId}');
+          if (!mounted) return;
           setState(() {
             _isBannerAdLoaded = true;
           });
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint('BannerAd failed to load: ${ad.adUnitId}, Error: $error');
+          debugPrint('BannerAd failed to load: \\${ad.adUnitId}, Error: $error');
           ad.dispose(); // Dispose the ad when it fails to load
+          if (!mounted) return;
           setState(() {
             _isBannerAdLoaded = false;
           });
