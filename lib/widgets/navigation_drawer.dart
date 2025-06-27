@@ -20,7 +20,7 @@ class AppNavigationDrawer extends StatelessWidget {
             context,
             icon: Icons.home,
             title: 'Home',
-            route: '/home', // Directly provide route string
+            route: '/videoPlayer', // Route to main screen
           ),
           _buildMenuItem(
             context,

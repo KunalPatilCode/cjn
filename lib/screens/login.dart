@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cjn/widgets/navigation_drawer.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Login'),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        // The menu icon will appear automatically if a drawer is present
+      ),
+      drawer: const AppNavigationDrawer(),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
@@ -63,8 +71,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       dropdownColor: Colors.grey[900],
                       style: const TextStyle(color: Colors.white),
                       items: const [
-                        DropdownMenuItem(value: 'user', child: Text('User')),
-                        DropdownMenuItem(value: 'admin', child: Text('Admin')),
+                        DropdownMenuItem(value: 'candidate', child: Text('Candidate')),
+                        DropdownMenuItem(value: 'employer', child: Text('Employer')),
+                        DropdownMenuItem(value: 'viewer', child: Text('Viewer')),
                       ],
                       onChanged: (value) {
                         setState(() {
