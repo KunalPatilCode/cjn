@@ -1,4 +1,5 @@
 import 'package:cjn/screens/login.dart';
+import 'package:cjn/screens/register.dart';
 import 'package:flutter/material.dart';
 import 'package:cjn/screens/video_player_screen.dart'; // Ensure this path is correct
 import 'package:google_mobile_ads/google_mobile_ads.dart'; // Import for Mobile Ads initialization
@@ -100,6 +101,7 @@ class MyApp extends StatelessWidget {
       home: const VideoPlayerScreen(videoId: 'LMPvtCrOvZY'),
       routes: {
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
       },
       
       // onGenerateRoute is kept if you intend to navigate to VideoPlayerScreen from other places
