@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cjn/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -285,178 +287,246 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
+  Future<void> _handleRegistration() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
+    try {
+      // Create user data map
+      Map<String, dynamic> userData = {
+        'name': _nameController.text,
+        'phone': '${_selectedCountryCode}${_phoneController.text}',
+        'gender': _gender,
+        'userType': _userType,
+        'role': _role,
+        'department': _departmentController.text,
+        'academicYear': _academicYearController.text,
+        'dob': _dobController.text,
+        'collegeCode': _collegeCodeController.text,
+        'qualification': _qualificationController.text,
+        'skills': _skillsController.text,
+        'experience': _experienceController.text,
+      };
+
+      // Register user with Firebase
+      bool success = await authService.registerWithEmailAndPassword(
+        email: _emailController.text,
+        password: _passwordController.text,
+        userData: userData,
+      );
+
+      if (success) {
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Registration successful!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Navigate to home screen or login
+        Navigator.pushReplacementNamed(context, '/');
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authService.errorMessage ?? 'Registration failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An error occurred: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text('USER REGISTRATION FORM'),
-        backgroundColor: Colors.black,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              DropdownButtonFormField<String>(
-                value: _userType,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'User Type*',
-                  labelStyle: TextStyle(color: Colors.white),
-                  filled: true,
-                  fillColor: Colors.grey,
-                ),
-                dropdownColor: Colors.grey[900],
-                style: const TextStyle(color: Colors.white),
-                items: _userTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
-                onChanged: (value) => setState(() => _userType = value),
-                validator: (value) => value == null ? 'Please select a user type' : null,
-              ),
-              const SizedBox(height: 24),
-              _buildTextField(_nameController, 'Candidate Name*', 'Please enter the candidate name *', required: true),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  SizedBox(
-                    width: 150,
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedCountryCode,
-                      decoration: const InputDecoration(
-                        labelText: 'Country Code',
-                        labelStyle: TextStyle(color: Colors.white),
-                        filled: true,
-                        fillColor: Colors.grey,
-                      ),
-                      dropdownColor: Colors.grey[900],
-                      style: const TextStyle(color: Colors.white),
-                      items: _countryCodes.map((country) => 
-                        DropdownMenuItem(
-                          value: country['code'],
-                          child: Text('${country['code']} ${country['country']}'),
-                        )
-                      ).toList(),
-                      onChanged: (value) => setState(() => _selectedCountryCode = value),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildTextField(_phoneController, 'Candidate Phone*', 'Please enter the candidate phone *', required: true, keyboardType: TextInputType.phone),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(_emailController, 'Candidate Email*', 'Please enter the candidate email *', required: true, keyboardType: TextInputType.emailAddress),
-              const SizedBox(height: 16),
-              const Text('Candidate Gender', style: TextStyle(color: Colors.white)),
-              Row(
-                children: [
-                  Radio<String>(
-                    value: 'Male',
-                    groupValue: _gender,
-                    onChanged: (value) => setState(() => _gender = value),
-                    activeColor: Colors.blue,
-                  ),
-                  const Text('Male', style: TextStyle(color: Colors.white)),
-                  Radio<String>(
-                    value: 'Female',
-                    groupValue: _gender,
-                    onChanged: (value) => setState(() => _gender = value),
-                    activeColor: Colors.blue,
-                  ),
-                  const Text('Female', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(_departmentController, 'Candidate Department', 'Please enter the candidate department'),
-              const SizedBox(height: 16),
-              _buildTextField(_academicYearController, 'Academic Year', 'Please enter the candidate academic year'),
-              const SizedBox(height: 16),
-              _buildTextField(_dobController, 'Candidate Date Of Birth(DOB)', 'dd/mm/yyyy', readOnly: true, onTap: () async {
-                DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime(2000),
-                  firstDate: DateTime(1950),
-                  lastDate: DateTime.now(),
-                  builder: (context, child) {
-                    return Theme(
-                      data: ThemeData.dark(),
-                      child: child!,
-                    );
-                  },
-                );
-                if (picked != null) {
-                  _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
-                }
-              }),
-              const SizedBox(height: 16),
-              _buildTextField(_collegeCodeController, 'College Code', 'Please enter the candidate college code'),
-              const SizedBox(height: 16),
-              _buildTextField(_passwordController, 'Password*', 'Please enter the candidate password', required: true, obscureText: true),
-              const SizedBox(height: 16),
-              _buildTextField(_qualificationController, 'Highest Qualifications', 'Please enter the highest qualification'),
-              const SizedBox(height: 16),
-              _buildTextField(_skillsController, 'Skills', 'Please enter the skills'),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _role,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Role*',
-                  labelStyle: TextStyle(color: Colors.white),
-                  filled: true,
-                  fillColor: Colors.grey,
-                ),
-                dropdownColor: Colors.grey[900],
-                style: const TextStyle(color: Colors.white),
-                items: _roles.map((role) => DropdownMenuItem(value: role, child: Text(role))).toList(),
-                onChanged: (value) => setState(() => _role = value),
-                validator: (value) => value == null ? 'Please select a role' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(_experienceController, 'Experience', 'Please enter the candidate experience'),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () {
-                      _formKey.currentState?.reset();
-                      setState(() {
-                        _gender = 'Male';
-                        _role = null;
-                        _userType = 'Candidate';
-                        _selectedCountryCode = '(+213)';
-                      });
-                    },
-                    child: const Text('Clear'),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.yellow[700],
-                      foregroundColor: Colors.black,
-                    ),
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        // Handle registration logic
-                      }
-                    },
-                    child: const Text('Register'),
-                  ),
-                ],
-              ),
-            ],
+    return Consumer<AuthService>(
+      builder: (context, authService, child) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            title: const Text('USER REGISTRATION FORM'),
+            backgroundColor: Colors.black,
+            elevation: 0,
           ),
-        ),
-      ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: _userType,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'User Type*',
+                      labelStyle: TextStyle(color: Colors.white),
+                      filled: true,
+                      fillColor: Colors.grey,
+                    ),
+                    dropdownColor: Colors.grey[900],
+                    style: const TextStyle(color: Colors.white),
+                    items: _userTypes.map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
+                    onChanged: (value) => setState(() => _userType = value),
+                    validator: (value) => value == null ? 'Please select a user type' : null,
+                  ),
+                  const SizedBox(height: 24),
+                  _buildTextField(_nameController, 'Candidate Name*', 'Please enter the candidate name *', required: true),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 150,
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedCountryCode,
+                          decoration: const InputDecoration(
+                            labelText: 'Country Code',
+                            labelStyle: TextStyle(color: Colors.white),
+                            filled: true,
+                            fillColor: Colors.grey,
+                          ),
+                          dropdownColor: Colors.grey[900],
+                          style: const TextStyle(color: Colors.white),
+                          items: _countryCodes.map((country) => 
+                            DropdownMenuItem(
+                              value: country['code'],
+                              child: Text('${country['code']} ${country['country']}'),
+                            )
+                          ).toList(),
+                          onChanged: (value) => setState(() => _selectedCountryCode = value),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildTextField(_phoneController, 'Candidate Phone*', 'Please enter the candidate phone *', required: true, keyboardType: TextInputType.phone),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(_emailController, 'Candidate Email*', 'Please enter the candidate email *', required: true, keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 16),
+                  const Text('Candidate Gender', style: TextStyle(color: Colors.white)),
+                  Row(
+                    children: [
+                      Radio<String>(
+                        value: 'Male',
+                        groupValue: _gender,
+                        onChanged: (value) => setState(() => _gender = value),
+                        activeColor: Colors.blue,
+                      ),
+                      const Text('Male', style: TextStyle(color: Colors.white)),
+                      Radio<String>(
+                        value: 'Female',
+                        groupValue: _gender,
+                        onChanged: (value) => setState(() => _gender = value),
+                        activeColor: Colors.blue,
+                      ),
+                      const Text('Female', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(_departmentController, 'Candidate Department', 'Please enter the candidate department'),
+                  const SizedBox(height: 16),
+                  _buildTextField(_academicYearController, 'Academic Year', 'Please enter the candidate academic year'),
+                  const SizedBox(height: 16),
+                  _buildTextField(_dobController, 'Candidate Date Of Birth(DOB)', 'dd/mm/yyyy', readOnly: true, onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime(2000),
+                      firstDate: DateTime(1950),
+                      lastDate: DateTime.now(),
+                      builder: (context, child) {
+                        return Theme(
+                          data: ThemeData.dark(),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+                    }
+                  }),
+                  const SizedBox(height: 16),
+                  _buildTextField(_collegeCodeController, 'College Code', 'Please enter the candidate college code'),
+                  const SizedBox(height: 16),
+                  _buildTextField(_passwordController, 'Password*', 'Please enter the candidate password', required: true, obscureText: true),
+                  const SizedBox(height: 16),
+                  _buildTextField(_qualificationController, 'Highest Qualifications', 'Please enter the highest qualification'),
+                  const SizedBox(height: 16),
+                  _buildTextField(_skillsController, 'Skills', 'Please enter the skills'),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: _role,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Role*',
+                      labelStyle: TextStyle(color: Colors.white),
+                      filled: true,
+                      fillColor: Colors.grey,
+                    ),
+                    dropdownColor: Colors.grey[900],
+                    style: const TextStyle(color: Colors.white),
+                    items: _roles.map((role) => DropdownMenuItem(value: role, child: Text(role))).toList(),
+                    onChanged: (value) => setState(() => _role = value),
+                    validator: (value) => value == null ? 'Please select a role' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildTextField(_experienceController, 'Experience', 'Please enter the candidate experience'),
+                  const SizedBox(height: 32),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: authService.isLoading ? null : () {
+                          _formKey.currentState?.reset();
+                          setState(() {
+                            _gender = 'Male';
+                            _role = null;
+                            _userType = 'Candidate';
+                            _selectedCountryCode = '(+213)';
+                          });
+                        },
+                        child: const Text('Clear'),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow[700],
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: authService.isLoading ? null : _handleRegistration,
+                        child: authService.isLoading 
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                              ),
+                            )
+                          : const Text('Register'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -490,8 +560,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
       readOnly: readOnly,
       onTap: onTap,
       validator: required
-          ? (value) => value == null || value.isEmpty ? 'This field is required' : null
+          ? (value) {
+              if (value == null || value.isEmpty) {
+                return 'This field is required';
+              }
+              if (label.contains('Email') && !_isValidEmail(value)) {
+                return 'Please enter a valid email address';
+              }
+              if (label.contains('Password') && !_isValidPassword(value)) {
+                return 'Password must be at least 8 characters with uppercase, lowercase, and number';
+              }
+              return null;
+            }
           : null,
     );
+  }
+
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+  }
+
+  bool _isValidPassword(String password) {
+    return password.length >= 8 && 
+           RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)').hasMatch(password);
   }
 } 

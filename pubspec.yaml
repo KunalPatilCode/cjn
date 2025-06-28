@@ -36,7 +36,12 @@ dependencies:
   youtube_player_flutter: ^9.1.1
   cached_network_image: ^3.4.1
   google_mobile_ads: ^6.0.0
-
+  
+  # Firebase dependencies
+  firebase_core: 2.24.0
+  firebase_auth: 4.15.0
+  cloud_firestore: 4.13.0
+  provider: 6.1.1
 
 dev_dependencies:
   flutter_test:
